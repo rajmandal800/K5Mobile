@@ -15,7 +15,7 @@ import {
   Platform,
 } from "react-native";
 import { WebView } from "react-native-webview";
-
+import createInvoke from "react-native-webview-invoke/native";
 const splash = require("./assets/splash.png");
 const ScreenHeight = Dimensions.get("screen").height;
 const ScreenWidth = Dimensions.get("screen").width;
@@ -36,99 +36,41 @@ class App extends React.Component {
     webview: null,
     jscode: ``,
   };
-  componentDidMount = () => {
-    // console.log("DidMount")
-    this.webviewRef = React.createRef();
-    BackHandler.addEventListener(
-      "hardwareBackPress",
-      this.handleBackButtonClick
-    );
+  webview = React.createRef();
+  invoke = createInvoke(() => this.webview);
 
-    let jscode = ``;
-    let OS = Platform.OS;
-    if (OS == "android") {
-      jscode = `(function(){
-     
-        document.querySelector("body").addEventListener('click', function(e) {
-          var anchor = e.target.closest('a');
-          if(anchor !== null) {
-              e.preventDefault()
-              window.location.href=anchor.href
-          }
-        }, false);
-      })()`;
-    } else {
-      jscode = `(function(){
-        const meta = document.createElement(\'meta\'); meta.setAttribute(\'content\', \'width=device-width, initial-scale=1, maximum-scale=0.99, user-scalable=0\'); meta.setAttribute(\'name\', \'viewport\'); document.getElementsByTagName(\'head\')[0].appendChild(meta);
-      })()`;
-    }
-
-    this.setState({ webview: this.webviewRef, jscode: jscode });
+  whatIsTheNameOfA = this.invoke.bind("whatIsTheNameOfA");
+  tellAYouArea = this.invoke.bind("tellAYouArea");
+  connectPrinter = this.invoke.bind("connectPrinter");
+  printFromWeb = async () => {
+    let response = await this.whatIsTheNameOfA();
   };
 
-  handleNavigationState = (navState) => {
-    let { canGoBack, canGoForward, url } = navState;
-
-    this.setState({ canGoBack, canGoForward, currentUrl: url });
+  handleConnectPrinter = async () => {
+    let host = "192.168.178.22";
+    let port = 9100;
+    let response = await this.connectPrinter(host, port);
+    console.log(response);
   };
 
-  handleBackButtonClick = () => {
-    // console.log("Back Button")
-    this.state.webview.current.goBack();
-    return true;
-  };
-
-  frontButtonHandler = () => {
-    // console.log("Front Button");
-    if (this.webviewRef.current) this.webviewRef.current.goForward();
-  };
   render() {
     return (
       <React.Fragment>
         <StatusBar barStyle="auto" />
         <SafeAreaView style={styles.container}>
           <WebView
-            allowsBackForwardNavigationGestures
-            source={{ uri: this.state.currentUrl }}
-            // source={require("./assets/test.html")}
-            style={styles.webview}
-            ignoreSslError={true}
-            startInLoadingState={true}
-            allowsFullscreenVideo
-            allowsInlineMediaPlayback
-            mediaPlaybackRequiresUserAction
-            onError={console.error.bind(console, "error")}
-            renderLoading={() => (
-              <View
-                style={{
-                  width: ScreenWidth,
-                  height: ScreenHeight,
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <Image source={splash} resizeMode="center"></Image>
-                {/* <ActivityIndicator
-              color='#6592e6'
-              size='large'
-              style={{flex:1,alignItems:"center",justifyContent:"center",position:"relative"}}
-            /> */}
-              </View>
-            )}
-            ref={this.webviewRef}
-            onNavigationStateChange={(navState) => {
-              this.handleNavigationState(navState);
-            }}
-            originWhitelist={["https"]}
-            scalesPageToFit={true}
+            useWebKit
+            ref={(webview) => (this.webview = webview)}
+            // originWhitelist={['*']}
+            // originWhitelist={['file://']}
+            onMessage={this.invoke.listener}
+            source={{ uri: "https://k5fitnessgears.com/" }}
+            style={{ flex: 1, width: "100%", height: 500 }}
             javaScriptEnabled={true}
-            domStorageEnabled={true}
-            injectedJavaScript={this.state.jscode}
-            onMessage={(event) => {}}
-            onLoadProgress={(event) => {
-              // console.log("current_path", event);
+            onError={(error) => {
+              // console.log(error.type);
             }}
+            scalesPageToFit
           />
         </SafeAreaView>
       </React.Fragment>
